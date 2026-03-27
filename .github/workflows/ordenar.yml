@@ -1,8 +1,9 @@
 name: Ordenar Musica
 on:
   push:
-    paths:
-      - 'songs/**' # Solo se activa si subes algo a la carpeta "songs"
+    branches: [ main ] # Se activa al guardar cambios en la rama principal
+  workflow_dispatch: # Esto te permite activarlo manualmente con un botón
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -10,13 +11,16 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Crear Lista
+
+      - name: Crear Lista JSON
         run: |
-          # Este comando mira las fechas de subida y crea un archivo llamado musica.json
-          git ls-files -z songs/*.mp3 | xargs -0 -n1 -I{} git log -1 --format="%at {}" {} | sort -rn | awk '{print "{\"name\":\"" substr($2, 7) "\", \"url\":\"https://raw.githubusercontent.com/TU_USUARIO/TU_REPO/main/" $2 "\"},"}' > lista_temporal.json
+          # Buscamos todos los mp3 en la carpeta principal
           echo "[" > musica.json
-          cat lista_temporal.json | sed '$ s/,$//' >> musica.json
+          git ls-files -z *.mp3 | xargs -0 -n1 -I{} git log -1 --format="%at {}" {} | sort -rn | awk '{print "{\"name\":\"" $2 "\", \"url\":\"https://raw.githubusercontent.com/angelcrea615-sketch/musica_de_pro_player/main/" $2 "\"},"}' >> musica.json
+          # Limpiamos la última coma sobrante
+          sed -i '$ s/,$//' musica.json
           echo "]" >> musica.json
+
       - name: Guardar en GitHub
         run: |
           git config --local user.email "action@github.com"
