@@ -1,8 +1,8 @@
 name: Ordenar Musica
 on:
   push:
-    branches: [ main ] # Se activa al guardar cambios en la rama principal
-  workflow_dispatch: # Esto te permite activarlo manualmente con un botón
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,12 +12,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Crear Lista JSON
+      - name: Crear Lista JSON Profesional
         run: |
-          # Buscamos todos los mp3 en la carpeta principal
           echo "[" > musica.json
-          git ls-files -z *.mp3 | xargs -0 -n1 -I{} git log -1 --format="%at {}" {} | sort -rn | awk '{print "{\"name\":\"" $2 "\", \"url\":\"https://raw.githubusercontent.com/angelcrea615-sketch/musica_de_pro_player/main/" $2 "\"},"}' >> musica.json
-          # Limpiamos la última coma sobrante
+          # Buscamos mp3, obtenemos fecha y nombre completo, ordenamos y generamos JSON
+          git ls-files -z *.mp3 | xargs -0 -n1 -I{} git log -1 --format="%at {}" {} | sort -rn | while read line; do
+            date=$(echo $line | awk '{print $1}')
+            name=$(echo $line | cut -d' ' -f2-)
+            echo "{\"name\":\"$name\", \"url\":\"https://raw.githubusercontent.com/angelcrea615-sketch/musica_de_pro_player/main/$name\"}," >> musica.json
+          done
+          # Quitamos la última coma y cerramos el array
           sed -i '$ s/,$//' musica.json
           echo "]" >> musica.json
 
@@ -26,5 +30,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "Robot de Orden"
           git add musica.json
-          git commit -m "Lista actualizada" || exit 0
+          git commit -m "Lista de reproducción actualizada" || exit 0
           git push
