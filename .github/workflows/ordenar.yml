@@ -12,32 +12,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generar JSON por Fecha de Subida
+      - name: Generar JSON con Nombres Completos
         run: |
           echo "[" > musica.json
-          
-          # 1. Listamos archivos mp3
-          # 2. Obtenemos la fecha del último cambio en formato Unix (segundos)
-          # 3. Ordenamos numéricamente de mayor a menor (R)
-          git ls-files -z *.mp3 | xargs -0 -n1 -I{} git log -1 --format="%at {}" {} | sort -rn | while read line; do
-            # Separamos los segundos del nombre del archivo
-            timestamp=$(echo $line | awk '{print $1}')
-            filename=$(echo $line | cut -d' ' -f2-)
-            
-            # Solo añadimos si el nombre no está vacío
+          # Obtenemos fecha y nombre completo sin importar los espacios
+          git ls-files -z *.mp3 | xargs -0 -n1 -I{} git log -1 --format="%at {}" {} | sort -rn | while read -r line; do
+            timestamp=$(echo "$line" | awk '{print $1}')
+            filename=$(echo "$line" | cut -d' ' -f2-)
             if [ -n "$filename" ]; then
+              # Usamos comillas dobles para envolver el nombre en el JSON
               echo "  {\"name\":\"$filename\", \"url\":\"https://raw.githubusercontent.com/angelcrea615-sketch/musica_de_pro_player/main/$filename\"}," >> musica.json
             fi
           done
-          
-          # Truco para quitar la última coma de forma segura
           sed -i '$ s/,$//' musica.json
           echo "]" >> musica.json
 
       - name: Guardar Cambios
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "Robot de Orden Real"
+          git config --local user.name "Robot de Orden Profesional"
           git add musica.json
-          git commit -m "Lista actualizada: Novedades primero" || exit 0
+          git commit -m "Lista actualizada con nombres completos" || exit 0
           git push
