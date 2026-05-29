@@ -1,25 +1,33 @@
 name: Backup Diario
 on:
   schedule:
-    - cron: '0 0 * * *' # Se ejecuta todos los días a medianoche
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with: { node-version: '18' }
-      - run: npm install
+      - name: Checkout del código
+        uses: actions/checkout@v4 # Actualizado a v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4 # Actualizado a v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install
+
       - name: Ejecutar Backup
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node scripts/backup.js
-      - name: Subir a GitHub
+
+      - name: Subir cambios al repo
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
+          # Solo hacemos commit si hubo cambios
           git add data/
-          git commit -m "Backup automático"
-          git push
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Backup automático: $(date)" && git push)
