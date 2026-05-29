@@ -7,7 +7,7 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
 async function runBackup() {
-  const coleccion = 'NOMBRE_DE_TU_COLECCION'; // <--- CAMBIA ESTO POR EL NOMBRE REAL
+  const coleccion = 'canciones_listado'; // <--- CAMBIA ESTO POR EL NOMBRE REAL
   const snapshot = await db.collection(coleccion).get();
   const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   
