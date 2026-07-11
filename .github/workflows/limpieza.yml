@@ -1,0 +1,16 @@
+name: Limpieza Automatica de Logs
+
+on:
+  workflow_dispatch: # Permite activar el borrado manualmente con un boton
+
+jobs:
+  borrar-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Borrar ejecuciones antiguas
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0          # Borra absolutamente todo lo que tenga 0 dias o mas
+          keep_minimum_runs: 0    # No conserva ninguna ejecucion vieja
