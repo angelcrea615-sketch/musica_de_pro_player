@@ -1,7 +1,9 @@
 name: Limpieza Automatica de Logs
 
 on:
-  workflow_dispatch: # Permite activar el borrado manualmente con un boton
+  workflow_dispatch: # Mantiene el botón manual por si acaso
+  schedule:
+    - cron: '0 0 * * 0' # Se ejecuta automáticamente todos los domingos a la medianoche (UTC)
 
 jobs:
   borrar-logs:
@@ -12,5 +14,5 @@ jobs:
         with:
           token: ${{ github.token }}
           repository: ${{ github.repository }}
-          retain_days: 0          # Borra absolutamente todo lo que tenga 0 dias o mas
-          keep_minimum_runs: 0    # No conserva ninguna ejecucion vieja
+          retain_days: 0
+          keep_minimum_runs: 0
