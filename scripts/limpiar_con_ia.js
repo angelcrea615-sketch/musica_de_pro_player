@@ -9,7 +9,8 @@ async function run() {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Usamos gemini-1.5-flash que tiene soporte activo en la capa gratuita
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const pathArchivo = 'data/canciones_listado.json';
     if (!fs.existsSync(pathArchivo)) {
@@ -26,7 +27,7 @@ async function run() {
         process.exit(1);
     }
 
-    console.log(`🚀 Iniciando procesamiento de ${data.length} canciones con Gemini 2.0 Flash (con pausa de seguridad)...`);
+    console.log(`🚀 Iniciando procesamiento de ${data.length} canciones con Gemini 1.5 Flash...`);
 
     let cambiosRealizados = false;
 
@@ -63,13 +64,13 @@ async function run() {
                 exito = true;
             } catch (e) {
                 intentos++;
-                console.warn(`⚠️ Intento ${intentos} fallido (${e.message}). Reintentando en 10 segundos...`);
-                await new Promise(r => setTimeout(r, 10000));
+                console.warn(`⚠️ Intento ${intentos} fallido (${e.message}). Reintentando en 15 segundos...`);
+                await new Promise(r => setTimeout(r, 15000));
             }
         }
 
-        // Pausa de 6 segundos entre cada canción para respetar el límite de 10 peticiones por minuto de la capa gratuita
-        await new Promise(r => setTimeout(r, 6000));
+        // Pausa de 10 segundos entre cada canción para cumplir estrictamente con los límites gratuitos
+        await new Promise(r => setTimeout(r, 10000));
     }
 
     if (cambiosRealizados) {
