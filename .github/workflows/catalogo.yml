@@ -1,7 +1,8 @@
 name: Limpieza Inteligente con IA
 
 on:
-  workflow_dispatch: # Se ejecuta manualmente cuando quieras limpiar
+  workflow_dispatch:
+
 jobs:
   ia-cleanup:
     runs-on: ubuntu-latest
@@ -9,11 +10,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Ejecutar limpieza IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
