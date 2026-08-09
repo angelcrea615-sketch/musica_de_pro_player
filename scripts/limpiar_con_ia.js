@@ -9,7 +9,8 @@ async function corregirConIA(cancion, apiKey) {
     Responde ÚNICAMENTE con un JSON estricto con este formato exacto, sin texto adicional: {"titulo": "...", "artista": "..."}`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+        // Cambiado a la versión 'v1' y modelo 'gemini-1.5-flash' limpio
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -70,7 +71,6 @@ async function run() {
             console.log(`⚠️ Se omitió esta canción por un error en la respuesta.`);
         }
 
-        // Pausa de 1 segundo para evitar saturar la API
         await new Promise(r => setTimeout(r, 1000));
     }
 
