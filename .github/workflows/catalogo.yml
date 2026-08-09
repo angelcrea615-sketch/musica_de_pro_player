@@ -2,7 +2,6 @@ name: Limpieza Inteligente con IA
 
 on:
   workflow_dispatch: # Se ejecuta manualmente cuando quieras limpiar
-
 jobs:
   ia-cleanup:
     runs-on: ubuntu-latest
@@ -18,7 +17,7 @@ jobs:
       - name: Ejecutar limpieza IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: node limpiar_con_ia.js
+        run: node scripts/limpiar_con_ia.js
 
       - name: Guardar cambios
         uses: stefanzweifel/git-auto-commit-action@v5
