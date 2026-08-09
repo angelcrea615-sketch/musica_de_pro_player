@@ -9,7 +9,7 @@ async function corregirConIA(cancion, apiKey) {
     Responde ÚNICAMENTE con un JSON estricto con este formato exacto, sin texto adicional: {"titulo": "...", "artista": "..."}`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -17,7 +17,6 @@ async function corregirConIA(cancion, apiKey) {
         
         const result = await response.json();
 
-        // Si la API devuelve un error, lo imprimimos para saber qué pasa
         if (!response.ok) {
             console.error("❌ Error de la API de Gemini:", JSON.stringify(result, null, 2));
             return null;
