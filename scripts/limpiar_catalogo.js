@@ -1,54 +1,44 @@
 const fs = require('fs');
-const path = 'data/canciones_listado.json';
 
-// Cargar el archivo
-const rawData = fs.readFileSync(path, 'utf8');
-const data = JSON.parse(rawData);
+async function corregirConIA(cancion, apiKey) {
+    const prompt = `Analiza este nombre de archivo de música: "${cancion.archivo_github || cancion.titulo}". 
+    Extrae el Título y el Artista real. Si el artista no es claro, pon "Desconocido". 
+    Responde ÚNICAMENTE en formato JSON: {"titulo": "...", "artista": "..."}`;
 
-function limpiarTexto(texto) {
-    if (!texto) return "";
-    return texto.replace(/\.(mp3|wav|flac|m4a|aac|ogg|webm)$/i, "").trim();
-}
-
-function procesarItem(item) {
-    if (typeof item === 'string') {
-        const nombreBase = limpiarTexto(item.split('/').pop());
-        let artista = "Artista desconocido";
-        let titulo = nombreBase;
-
-        if (nombreBase.includes(" - ")) {
-            [artista, titulo] = nombreBase.split(" - ");
-        } else if (nombreBase.includes("-")) {
-            [titulo, artista] = nombreBase.split("-");
-        }
-
-        return { archivo_github: item, artista: artista.trim(), titulo: titulo.trim() };
-    } 
-    
-    if (typeof item === 'object') {
-        const archivo = item.archivo_github || item.path || item.url_final || "";
-        const nombreBase = limpiarTexto(archivo.split('/').pop() || item.titulo || "");
-        
-        let artista = item.artista || "";
-        let titulo = item.titulo || "";
-
-        if ((!artista || artista === 'Artista desconocido' || artista === 'YouTube') && nombreBase.includes(" - ")) {
-            [artista, titulo] = nombreBase.split(" - ");
-        }
-
-        return {
-            ...item,
-            titulo: titulo || 'Sin título',
-            artista: artista || 'Artista desconocido',
-            archivo_github: archivo
-        };
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const result = await response.json();
+        const text = result.candidates[0].content.parts[0].text;
+        // Limpiamos el markdown de la respuesta si lo trae
+        return JSON.parse(text.replace(/```json|```/g, '').trim());
+    } catch (e) {
+        return { titulo: cancion.titulo, artista: cancion.artista }; // fallback si falla
     }
-    return item;
 }
 
-// Procesar según sea array u objeto
-const catalogoLimpio = Array.isArray(data) ? data.map(procesarItem) : Object.fromEntries(Object.entries(data).map(([k, v]) => [k, procesarItem(v)]));
+async function run() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const path = 'data/canciones_listado.json';
+    const data = JSON.parse(fs.readFileSync(path, 'utf8'));
 
-// Guardar
-fs.writeFileSync(path, JSON.stringify(catalogoLimpio, null, 2), 'utf8');
-console.log("¡Catálogo limpiado con Node.js!");
+    // Procesamos uno a uno (o por lotes si tienes muchísimos)
+    for (let i = 0; i < data.length; i++) {
+        // Solo procesamos si está "sucio" o sin artista claro
+        if (data[i].artista === "Artista desconocido" || data[i].artista === "") {
+            console.log(`Procesando con IA: ${data[i].titulo}`);
+            const corregido = await corregirConIA(data[i], apiKey);
+            data[i].titulo = corregido.titulo;
+            data[i].artista = corregido.artista;
+            // Delay para no saturar la API
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+
+    fs.writeFileSync(path, JSON.stringify(data, null, 2), 'utf8');
+}
+
+run();
