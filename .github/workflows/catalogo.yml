@@ -1,0 +1,30 @@
+name: Auto-limpiar Catálogo (Node.js)
+
+on:
+  push:
+    paths:
+      - 'data/canciones_listado.json'
+  workflow_dispatch:
+
+jobs:
+  limpiar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ejecutar script de limpieza
+        run: node limpiar_catalogo.js
+
+      - name: Guardar y commitear cambios
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🤖 Auto-limpieza de catálogo vía Node.js"
+          branch: main
