@@ -13,7 +13,7 @@ async function obtenerModeloValido(apiKey) {
             );
             if (modelo) {
                 console.log(`✅ Modelo detectado y seleccionado automáticamente: ${modelo.name}`);
-                return modelo.name; // Ej: "models/gemini-1.5-flash"
+                return modelo.name;
             }
         }
     } catch (e) {
@@ -22,36 +22,35 @@ async function obtenerModeloValido(apiKey) {
     return "models/gemini-1.5-flash";
 }
 
-async function corregirConIA(cancion, apiKey, nombreModelo) {
-    const textoAnalizar = cancion.titulo || cancion.archivo_github || "";
-    
-    const prompt = `Analiza este texto de una canción: "${textoAnalizar}". 
-    Separa correctamente el Título y el Artista real. 
-    Si no hay un artista claro, pon "Artista desconocido". 
-    Responde ÚNICAMENTE con un JSON estricto con este formato exacto, sin texto adicional: {"titulo": "...", "artista": "..."}`;
-
+async function enviarPrompt(prompt, apiKey, nombreModelo, usarBusquedaWeb = false) {
     let intentos = 0;
     while (intentos < 3) {
         try {
-            // Cambiado a v1beta que es donde están activos los modelos Flash
+            const bodyPayload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            // Si se requiere búsqueda profunda, activamos el buscador web (Grounding) de Gemini
+            if (usarBusquedaWeb) {
+                bodyPayload.tools = [{ googleSearch: {} }];
+            }
+
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/${nombreModelo}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                body: JSON.stringify(bodyPayload)
             });
             
             const result = await response.json();
 
             if (!response.ok) {
-                console.warn(`⚠️ Intento ${intentos + 1} - Error de API:`, result?.error?.message || response.statusText);
                 intentos++;
-                await new Promise(r => setTimeout(r, 10000));
+                await new Promise(r => setTimeout(r, 8000));
                 continue;
             }
 
             const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!text) {
-                console.warn(`⚠️ Intento ${intentos + 1} - Respuesta vacía de la IA.`);
                 intentos++;
                 await new Promise(r => setTimeout(r, 5000));
                 continue;
@@ -60,12 +59,41 @@ async function corregirConIA(cancion, apiKey, nombreModelo) {
             const jsonString = text.replace(/```json|```/g, '').trim();
             return JSON.parse(jsonString);
         } catch (e) {
-            console.warn(`⚠️ Intento ${intentos + 1} - Error de red/JSON:`, e.message);
             intentos++;
-            await new Promise(r => setTimeout(r, 10000));
+            await new Promise(r => setTimeout(r, 8000));
         }
     }
     return null;
+}
+
+async function corregirConIA(cancion, apiKey, nombreModelo) {
+    const textoAnalizar = cancion.titulo || cancion.archivo_github || "";
+    
+    // Primer intento: Análisis lógico directo local
+    const prompt1 = `Analiza este texto de una canción: "${textoAnalizar}". 
+    Separa correctamente el Título y el Artista real. Si el texto tiene formato como "Artista - Título", úsalo. 
+    Si no hay un artista claro, pon "Artista desconocido". 
+    Responde ÚNICAMENTE con un JSON estricto con este formato exacto, sin texto adicional: {"titulo": "...", "artista": "..."}`;
+
+    let resultado = await enviarPrompt(prompt1, apiKey, nombreModelo, false);
+
+    // SEGUNDO INTENTO: Si el artista es desconocido o vacío, buscamos activamente en YouTube Music / Internet usando Google Search Grounding
+    const esDesconocido = !resultado || !resultado.artista || resultado.artista.toLowerCase().includes("desconocido") || resultado.artista.trim() === "";
+    
+    if (esDesconocido) {
+        console.log(`   🌐 Artista no detectado. Buscando en YouTube Music e internet...`);
+        
+        const prompt2 = `Busca información en internet y YouTube Music sobre esta canción o archivo: "${textoAnalizar}". 
+        Encuentra el nombre real de la canción (Título) y el artista o intérprete oficial.
+        Responde ÚNICAMENTE con un JSON estricto, sin texto adicional: {"titulo": "...", "artista": "..."}`;
+        
+        const resultadoBusqueda = await enviarPrompt(prompt2, apiKey, nombreModelo, true);
+        if (resultadoBusqueda && resultadoBusqueda.artista && !resultadoBusqueda.artista.toLowerCase().includes("desconocido")) {
+            resultado = resultadoBusqueda;
+        }
+    }
+    
+    return resultado;
 }
 
 async function run() {
@@ -90,7 +118,7 @@ async function run() {
     }
 
     const nombreModelo = await obtenerModeloValido(apiKey);
-    console.log(`🚀 Iniciando procesamiento de ${data.length} canciones...`);
+    console.log(`🚀 Iniciando procesamiento de ${data.length} canciones con búsqueda web de respaldo...`);
 
     let cambiosRealizados = false;
 
@@ -108,7 +136,7 @@ async function run() {
             cambiosRealizados = true;
             console.log(`✅ Éxito -> Artista: "${resultadoIA.artista}" | Título: "${resultadoIA.titulo}"`);
         } else {
-            console.log(`⚠️ Se omitió esta canción tras varios reintentos.`);
+            console.log(`⚠️ Se mantuvo el texto original al no encontrar coincidencias.`);
         }
 
         await new Promise(r => setTimeout(r, 6000));
