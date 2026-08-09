@@ -16,6 +16,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Instalar SDK de Google
+        run: npm install @google/generative-ai
+
       - name: Ejecutar limpieza IA
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
